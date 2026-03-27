@@ -127,7 +127,6 @@ def validate_form(form: Dict[str, list]) -> tuple[Dict[str, str], Optional[str]]
     values = {}
     for field in FIELD_ORDER:
         values[field] = form.get(field, [""])[0].strip()
-    card_present_value = values.get("card_present", "")
     missing = [field for field in FIELD_ORDER if not values[field]]
     if missing:
         return values, f"Missing required fields: {', '.join(missing)}"
@@ -140,7 +139,7 @@ def validate_form(form: Dict[str, list]) -> tuple[Dict[str, str], Optional[str]]
     except ValueError:
         return values, "Amount must be a valid number"
     try:
-        parse_bool(card_present_value)
+        parse_bool(values["card_present"])
     except ValueError as exc:
         return values, f"Invalid card_present value: {exc}"
     return values, None
