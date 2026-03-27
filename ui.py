@@ -181,7 +181,8 @@ def make_handler(rules: Rules, rules_path: str) -> Type[BaseHTTPRequestHandler]:
                     analyzed = analyze_transactions([row], rules)
                     result = analyzed[0]
                 except (ValueError, KeyError) as exc:
-                    error = f"Unable to analyze transaction: {exc}"
+                    self.log_error("Analysis error: %s", exc)
+                    error = f"Unable to analyze transaction ({type(exc).__name__}): {exc}"
             self._send_html(
                 render_page(values, rules_path=rules_path, result=result, error=error)
             )
@@ -226,7 +227,7 @@ def main() -> int:
     try:
         rules = load_rules(args.rules)
     except (ValueError, FileNotFoundError, OSError) as exc:
-        print(f"Error: {exc}")
+        print(f"Failed to load rules: {exc}")
         return 1
 
     handler = make_handler(rules, args.rules)
