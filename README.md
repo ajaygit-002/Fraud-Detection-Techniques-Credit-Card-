@@ -14,6 +14,17 @@ python3 app.py \
   --rules rules.json
 ```
 
+## UI (Local Web Form)
+Run the lightweight UI server and open the page in your browser to enter
+transaction inputs.
+
+```bash
+python3 ui.py --host 127.0.0.1 --port 8000
+```
+
+Then open `http://127.0.0.1:8000/` and submit a transaction. Press `Ctrl+C`
+in the terminal to stop the UI server.
+
 ## Input Format
 The input CSV **must** include the following columns:
 - `transaction_id`
