@@ -98,7 +98,7 @@ def render_page(
         history_html = f"""
         <section class="history">
           <h2>Recent Activity</h2>
-          <p class="note">Last {len(history)} analyses &mdash; flagged: {flagged}.</p>
+          <p class="note">Last {len(history)} analyses — flagged: {flagged}.</p>
           <table>
             <thead><tr>{header_cells}</tr></thead>
             <tbody>{history_rows}</tbody>
@@ -208,7 +208,7 @@ def make_handler(rules: Dict[str, object], rules_path: str) -> Type[BaseHTTPRequ
         snapshot = {field: entry.get(field, "") for field in HISTORY_FIELDS}
         recent_history.append(snapshot)
         if len(recent_history) > MAX_HISTORY:
-            del recent_history[: len(recent_history) - MAX_HISTORY]
+            del recent_history[0]
 
     class FraudUIHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
