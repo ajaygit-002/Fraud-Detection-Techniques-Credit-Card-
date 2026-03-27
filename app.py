@@ -56,6 +56,10 @@ def parse_timestamp(value: str) -> datetime:
 
 
 def normalize_rules(rules: Dict[str, object]) -> Rules:
+    missing_keys = [key for key in DEFAULT_RULES if key not in rules]
+    if missing_keys:
+        missing_list = ", ".join(missing_keys)
+        raise ValueError(f"Rules missing required keys: {missing_list}")
     normalized = rules.copy()
     normalized["amount_threshold"] = float(rules["amount_threshold"])
     normalized["velocity_window_minutes"] = int(rules["velocity_window_minutes"])
