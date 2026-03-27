@@ -2,14 +2,13 @@
 import argparse
 import html
 import os
-from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
 from socketserver import TCPServer
 from typing import Dict, List, Optional, Tuple, Type
 from urllib.parse import parse_qs
 
-from app import Rules, analyze_transactions, load_rules, parse_bool, parse_timestamp
+from app import analyze_transactions, load_rules, parse_bool, parse_timestamp
 
 FIELD_ORDER = [
     "transaction_id",
@@ -28,7 +27,7 @@ def default_form_values() -> Dict[str, str]:
     return {
         "transaction_id": "",
         "card_id": "",
-        "timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "timestamp": "",
         "amount": "",
         "country": "",
         "merchant_category": "",
@@ -100,7 +99,7 @@ def render_page(
       <input id="card_id" name="card_id" value="{esc(values.get("card_id"))}" required>
 
       <label for="timestamp">Timestamp (ISO-8601)</label>
-      <input id="timestamp" name="timestamp" value="{esc(values.get("timestamp"))}" required>
+      <input id="timestamp" name="timestamp" value="{esc(values.get("timestamp"))}" placeholder="2024-01-01T10:00:00Z" required>
 
       <label for="amount">Amount</label>
       <input id="amount" name="amount" type="number" step="0.01" value="{esc(values.get("amount"))}" required>
@@ -153,7 +152,7 @@ def validate_form(form: Dict[str, List[str]]) -> Tuple[Dict[str, str], Optional[
     return values, None
 
 
-def make_handler(rules: Rules, rules_path: str) -> Type[BaseHTTPRequestHandler]:
+def make_handler(rules: Dict[str, object], rules_path: str) -> Type[BaseHTTPRequestHandler]:
     class FraudUIHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             if self.path not in {"/", "/index.html"}:
