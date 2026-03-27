@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
 from socketserver import TCPServer
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Type, TypedDict
 from urllib.parse import parse_qs
 
 from app import analyze_transactions, load_rules, parse_bool, parse_timestamp
@@ -20,6 +20,16 @@ FIELD_ORDER = [
     "merchant_category",
     "card_present",
 ]
+
+
+class Rules(TypedDict):
+    amount_threshold: float
+    high_risk_countries: List[str]
+    velocity_window_minutes: int
+    velocity_threshold: int
+    small_amount_threshold: float
+    small_amount_count_threshold: int
+    card_not_present_amount_threshold: float
 
 
 def default_form_values() -> Dict[str, str]:
@@ -123,7 +133,7 @@ def render_page(
 """
 
 
-def validate_form(form: Dict[str, list]) -> Tuple[Dict[str, str], Optional[str]]:
+def validate_form(form: Dict[str, List[str]]) -> Tuple[Dict[str, str], Optional[str]]:
     values = {}
     for field in FIELD_ORDER:
         entries = form.get(field)
@@ -146,7 +156,7 @@ def validate_form(form: Dict[str, list]) -> Tuple[Dict[str, str], Optional[str]]
     return values, None
 
 
-def make_handler(rules: Dict[str, object], rules_path: str) -> type[BaseHTTPRequestHandler]:
+def make_handler(rules: Rules, rules_path: str) -> Type[BaseHTTPRequestHandler]:
     class FraudUIHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             if self.path not in {"/", "/index.html"}:
@@ -167,8 +177,11 @@ def make_handler(rules: Dict[str, object], rules_path: str) -> type[BaseHTTPRequ
             result = None
             if not error:
                 row = values.copy()
-                analyzed = analyze_transactions([row], rules)
-                result = analyzed[0]
+                try:
+                    analyzed = analyze_transactions([row], rules)
+                    result = analyzed[0]
+                except (ValueError, KeyError) as exc:
+                    error = f"Unable to analyze transaction: {exc}"
             self._send_html(
                 render_page(values, rules_path=rules_path, result=result, error=error)
             )
