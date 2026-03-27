@@ -6,9 +6,19 @@ import os
 import sys
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
-from typing import Deque, Dict, Iterable, List
+from typing import Deque, Dict, Iterable, List, TypedDict
 
-DEFAULT_RULES: Dict[str, object] = {
+
+class Rules(TypedDict):
+    amount_threshold: float
+    high_risk_countries: List[str]
+    velocity_window_minutes: int
+    velocity_threshold: int
+    small_amount_threshold: float
+    small_amount_count_threshold: int
+    card_not_present_amount_threshold: float
+
+DEFAULT_RULES: Rules = {
     "amount_threshold": 5000.0,
     "high_risk_countries": ["NG", "RU", "BR"],
     "velocity_window_minutes": 10,
@@ -45,7 +55,7 @@ def parse_timestamp(value: str) -> datetime:
     return datetime.fromisoformat(cleaned)
 
 
-def normalize_rules(rules: Dict[str, object]) -> Dict[str, object]:
+def normalize_rules(rules: Dict[str, object]) -> Rules:
     normalized = rules.copy()
     normalized["amount_threshold"] = float(rules["amount_threshold"])
     normalized["velocity_window_minutes"] = int(rules["velocity_window_minutes"])
@@ -63,7 +73,7 @@ def normalize_rules(rules: Dict[str, object]) -> Dict[str, object]:
     return normalized
 
 
-def load_rules(path: str) -> Dict[str, object]:
+def load_rules(path: str) -> Rules:
     rules = DEFAULT_RULES.copy()
     if path:
         if not os.path.exists(path):
@@ -85,7 +95,7 @@ def trim_old_entries(entries: Deque[datetime], now: datetime, window: timedelta)
 
 
 def analyze_transactions(
-    rows: Iterable[Dict[str, str]], rules: Dict[str, object]
+    rows: Iterable[Dict[str, str]], rules: Rules
 ) -> List[Dict[str, str]]:
     flagged_rows: List[Dict[str, str]] = []
     velocity_window = timedelta(minutes=rules["velocity_window_minutes"])

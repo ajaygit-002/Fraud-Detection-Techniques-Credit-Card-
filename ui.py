@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
 from socketserver import TCPServer
-from typing import Dict, List, Optional, Tuple, Type, TypedDict
+from typing import Dict, List, Optional, Tuple, Type
 from urllib.parse import parse_qs
 
-from app import analyze_transactions, load_rules, parse_bool, parse_timestamp
+from app import Rules, analyze_transactions, load_rules, parse_bool, parse_timestamp
 
 FIELD_ORDER = [
     "transaction_id",
@@ -22,15 +22,6 @@ FIELD_ORDER = [
 ]
 
 MAX_BODY_BYTES = 10_000
-
-class Rules(TypedDict):
-    amount_threshold: float
-    high_risk_countries: List[str]
-    velocity_window_minutes: int
-    velocity_threshold: int
-    small_amount_threshold: float
-    small_amount_count_threshold: int
-    card_not_present_amount_threshold: float
 
 
 def default_form_values() -> Dict[str, str]:
@@ -188,7 +179,13 @@ def make_handler(rules: Rules, rules_path: str) -> Type[BaseHTTPRequestHandler]:
             if length > MAX_BODY_BYTES:
                 self.send_error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
                 return
-            body = self.rfile.read(length).decode("utf-8")
+            try:
+                body = self.rfile.read(length).decode("utf-8")
+            except UnicodeDecodeError:
+                self.send_error(
+                    HTTPStatus.BAD_REQUEST, "Invalid UTF-8 encoding in request body"
+                )
+                return
             form = parse_qs(body, keep_blank_values=True)
             values, error = validate_form(form)
             result = None
