@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
 from socketserver import TCPServer
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 from urllib.parse import parse_qs
 
 from app import analyze_transactions, load_rules, parse_bool, parse_timestamp
@@ -123,10 +123,11 @@ def render_page(
 """
 
 
-def validate_form(form: Dict[str, list]) -> tuple[Dict[str, str], Optional[str]]:
+def validate_form(form: Dict[str, list]) -> Tuple[Dict[str, str], Optional[str]]:
     values = {}
     for field in FIELD_ORDER:
-        values[field] = form.get(field, [""])[0].strip()
+        entries = form.get(field)
+        values[field] = entries[0].strip() if entries else ""
     missing = [field for field in FIELD_ORDER if not values[field]]
     if missing:
         return values, f"Missing required fields: {', '.join(missing)}"
