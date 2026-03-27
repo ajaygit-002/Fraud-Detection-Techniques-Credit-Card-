@@ -126,7 +126,7 @@ def render_page(
 def validate_form(form: Dict[str, list]) -> tuple[Dict[str, str], Optional[str]]:
     values = {}
     for field in FIELD_ORDER:
-        values[field] = (form.get(field, [""])[0]).strip()
+        values[field] = form.get(field, [""])[0].strip()
     card_present_value = values.get("card_present", "")
     missing = [field for field in FIELD_ORDER if not values[field]]
     if missing:
