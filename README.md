@@ -4,7 +4,7 @@
 This repository includes a minimal, rule-based fraud detection application for credit card transactions. It reads a CSV file, evaluates each transaction against configurable rules, and outputs a new CSV with suspicious flags and reasons.
 
 ## Requirements
-- Python 3.9+ (no external dependencies)
+- Python 3.8+ (no external dependencies)
 
 ## Quick Start
 ```bash
@@ -18,7 +18,7 @@ python3 app.py \
 The input CSV **must** include the following columns:
 - `transaction_id`
 - `card_id`
-- `timestamp` (ISO-8601, e.g., `2024-01-01T10:00:00`)
+- `timestamp` (ISO-8601, e.g., `2024-01-01T10:00:00` or `2024-01-01T10:00:00Z`; timestamps are compared as-is, so keep them consistent)
 - `amount`
 - `country` (2-letter code)
 - `merchant_category`
@@ -34,9 +34,9 @@ Edit `rules.json` to adjust thresholds. Current rules include:
 - `amount_threshold`
 - `high_risk_countries`
 - `velocity_window_minutes`
-- `velocity_threshold`
+- `velocity_threshold` (flags when the number of transactions in the window reaches this value, **including the current transaction**; subsequent transactions within the window continue to be flagged while the count stays at or above the threshold)
 - `small_amount_threshold`
-- `small_amount_count_threshold`
+- `small_amount_count_threshold` (flags when the number of small transactions in the window reaches this value, **including the current transaction**; subsequent small transactions within the window continue to be flagged while the count stays at or above the threshold)
 - `card_not_present_amount_threshold`
 
 ## Project Files

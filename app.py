@@ -45,6 +45,24 @@ def parse_timestamp(value: str) -> datetime:
     return datetime.fromisoformat(cleaned)
 
 
+def normalize_rules(rules: Dict[str, object]) -> Dict[str, object]:
+    normalized = rules.copy()
+    normalized["amount_threshold"] = float(rules["amount_threshold"])
+    normalized["velocity_window_minutes"] = int(rules["velocity_window_minutes"])
+    normalized["velocity_threshold"] = int(rules["velocity_threshold"])
+    normalized["small_amount_threshold"] = float(rules["small_amount_threshold"])
+    normalized["small_amount_count_threshold"] = int(rules["small_amount_count_threshold"])
+    normalized["card_not_present_amount_threshold"] = float(
+        rules["card_not_present_amount_threshold"]
+    )
+
+    high_risk_countries = rules["high_risk_countries"]
+    if not isinstance(high_risk_countries, list):
+        raise ValueError("high_risk_countries must be a list of country codes")
+    normalized["high_risk_countries"] = [str(code).upper() for code in high_risk_countries]
+    return normalized
+
+
 def load_rules(path: str) -> Dict[str, object]:
     rules = DEFAULT_RULES.copy()
     if path:
@@ -56,9 +74,9 @@ def load_rules(path: str) -> Dict[str, object]:
             raise ValueError("Rules file must contain a JSON object")
         for key, value in data.items():
             if key not in rules:
-                raise ValueError(f"Unknown rule provided: {key}")
+                raise ValueError(f"Unknown rule key provided: {key}")
             rules[key] = value
-    return rules
+    return normalize_rules(rules)
 
 
 def trim_old_entries(entries: Deque[datetime], now: datetime, window: timedelta) -> None:
@@ -70,13 +88,13 @@ def analyze_transactions(
     rows: Iterable[Dict[str, str]], rules: Dict[str, object]
 ) -> List[Dict[str, str]]:
     flagged_rows: List[Dict[str, str]] = []
-    velocity_window = timedelta(minutes=int(rules["velocity_window_minutes"]))
-    velocity_threshold = int(rules["velocity_threshold"])
-    small_amount_threshold = float(rules["small_amount_threshold"])
-    small_amount_count_threshold = int(rules["small_amount_count_threshold"])
-    amount_threshold = float(rules["amount_threshold"])
-    card_not_present_threshold = float(rules["card_not_present_amount_threshold"])
-    high_risk_countries = {c.upper() for c in rules["high_risk_countries"]}
+    velocity_window = timedelta(minutes=rules["velocity_window_minutes"])
+    velocity_threshold = rules["velocity_threshold"]
+    small_amount_threshold = rules["small_amount_threshold"]
+    small_amount_count_threshold = rules["small_amount_count_threshold"]
+    amount_threshold = rules["amount_threshold"]
+    card_not_present_threshold = rules["card_not_present_amount_threshold"]
+    high_risk_countries = set(rules["high_risk_countries"])
 
     card_velocity: Dict[str, Deque[datetime]] = defaultdict(deque)
     card_small_amounts: Dict[str, Deque[datetime]] = defaultdict(deque)
@@ -86,7 +104,7 @@ def analyze_transactions(
         timestamp = parse_timestamp(row["timestamp"])
         card_id = row["card_id"]
         country = row["country"].strip().upper()
-        card_present = parse_bool(row.get("card_present", "false"))
+        card_present = parse_bool(row["card_present"])
 
         reasons: List[str] = []
         if amount >= amount_threshold:
@@ -130,8 +148,10 @@ def read_transactions(path: str) -> List[Dict[str, str]]:
 
 def write_output(path: str, rows: List[Dict[str, str]]) -> None:
     if not rows:
-        raise ValueError("No transactions to write")
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        raise ValueError("No transactions to process or write")
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
     fieldnames = list(rows[0].keys())
     with open(path, "w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
@@ -173,7 +193,7 @@ def main() -> int:
         transactions = read_transactions(args.input)
         analyzed = analyze_transactions(transactions, rules)
         write_output(args.output, analyzed)
-    except (ValueError, FileNotFoundError, json.JSONDecodeError) as exc:
+    except (ValueError, FileNotFoundError, json.JSONDecodeError, OSError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
