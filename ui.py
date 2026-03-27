@@ -20,7 +20,18 @@ FIELD_ORDER = [
     "card_present",
 ]
 
+HISTORY_FIELDS = [
+    "transaction_id",
+    "card_id",
+    "timestamp",
+    "amount",
+    "country",
+    "risk_score",
+    "is_suspicious",
+]
+
 MAX_BODY_BYTES = 10_000
+MAX_HISTORY = 10
 
 
 def default_form_values() -> Dict[str, str]:
@@ -41,6 +52,7 @@ def render_page(
     rules_path: str,
     result: Optional[Dict[str, str]] = None,
     error: Optional[str] = None,
+    history: Optional[List[Dict[str, str]]] = None,
 ) -> str:
     def esc(value: Optional[str]) -> str:
         return html.escape(value or "")
@@ -49,16 +61,48 @@ def render_page(
     result_html = ""
     if result:
         reasons = result.get("reasons") or "None"
+        suspicious = result.get("is_suspicious") == "true"
+        risk_score = result.get("risk_score", "low")
+        alert_text = (
+            "Alert: suspicious activity detected." if suspicious else "No alert triggered."
+        )
+        alert_class = "alert high" if suspicious else "alert ok"
         rows = "".join(
             f"<tr><th>{esc(name)}</th><td>{esc(result.get(name, ''))}</td></tr>"
-            for name in FIELD_ORDER + ["is_suspicious", "reasons"]
+            for name in FIELD_ORDER + ["is_suspicious", "risk_score", "reasons"]
         )
         result_html = f"""
         <section class="result">
           <h2>Result</h2>
+          <p><strong>Risk score:</strong> {esc(risk_score)}</p>
+          <p class="{alert_class}">{esc(alert_text)}</p>
           <p><strong>Suspicious:</strong> {esc(result.get("is_suspicious"))}</p>
           <p><strong>Reasons:</strong> {esc(reasons)}</p>
           <table>{rows}</table>
+        </section>
+        """
+
+    history_html = ""
+    history = history or []
+    if history:
+        flagged = sum(1 for item in history if item.get("is_suspicious") == "true")
+        history_rows = "".join(
+            "<tr>"
+            + "".join(
+                f"<td>{esc(entry.get(field, ''))}</td>" for field in HISTORY_FIELDS
+            )
+            + "</tr>"
+            for entry in history
+        )
+        header_cells = "".join(f"<th>{esc(field)}</th>" for field in HISTORY_FIELDS)
+        history_html = f"""
+        <section class="history">
+          <h2>Recent Activity</h2>
+          <p class="note">Last {len(history)} analyses — flagged: {flagged}.</p>
+          <table>
+            <thead><tr>{header_cells}</tr></thead>
+            <tbody>{history_rows}</tbody>
+          </table>
         </section>
         """
 
@@ -81,10 +125,14 @@ def render_page(
       button:hover {{ background: #1e40af; }}
       .error {{ color: #b91c1c; font-weight: 600; }}
       .result {{ margin-top: 1.5rem; background: #fff; padding: 1rem; border-radius: 8px; }}
+      .history {{ margin-top: 1.5rem; background: #fff; padding: 1rem; border-radius: 8px; }}
       table {{ width: 100%; border-collapse: collapse; margin-top: 0.5rem; }}
       th, td {{ text-align: left; padding: 0.4rem; border-bottom: 1px solid #e5e7eb; }}
       th {{ width: 35%; color: #374151; }}
       .note {{ color: #6b7280; font-size: 0.9rem; }}
+      .alert {{ font-weight: 600; padding: 0.4rem 0.6rem; border-radius: 6px; display: inline-block; }}
+      .alert.high {{ background: #fee2e2; color: #991b1b; }}
+      .alert.ok {{ background: #dcfce7; color: #166534; }}
     </style>
   </head>
   <body>
@@ -119,6 +167,7 @@ def render_page(
       <button type="submit">Analyze Transaction</button>
     </form>
     {result_html}
+    {history_html}
   </body>
 </html>
 """
@@ -153,13 +202,25 @@ def validate_form(form: Dict[str, List[str]]) -> Tuple[Dict[str, str], Optional[
 
 
 def make_handler(rules: Dict[str, object], rules_path: str) -> Type[BaseHTTPRequestHandler]:
+    recent_history: List[Dict[str, str]] = []
+
+    def record_history(entry: Dict[str, str]) -> None:
+        snapshot = {field: entry.get(field, "") for field in HISTORY_FIELDS}
+        recent_history.append(snapshot)
+        if len(recent_history) > MAX_HISTORY:
+            del recent_history[0]
+
     class FraudUIHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             if self.path not in {"/", "/index.html"}:
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
             self._send_html(
-                render_page(default_form_values(), rules_path=rules_path)
+                render_page(
+                    default_form_values(),
+                    rules_path=rules_path,
+                    history=recent_history,
+                )
             )
 
         def do_POST(self) -> None:
@@ -193,11 +254,18 @@ def make_handler(rules: Dict[str, object], rules_path: str) -> Type[BaseHTTPRequ
                 try:
                     analyzed = analyze_transactions([row], rules)
                     result = analyzed[0]
+                    record_history(result)
                 except (ValueError, KeyError) as exc:
                     self.log_error("Analysis error: %s", exc)
                     error = f"Unable to analyze transaction: {exc}"
             self._send_html(
-                render_page(values, rules_path=rules_path, result=result, error=error)
+                render_page(
+                    values,
+                    rules_path=rules_path,
+                    result=result,
+                    error=error,
+                    history=recent_history,
+                )
             )
 
         def _send_html(self, content: str) -> None:

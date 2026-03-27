@@ -16,7 +16,8 @@ python3 app.py \
 
 ## UI (Local Web Form)
 Run the lightweight UI server and open the page in your browser to enter
-transaction inputs.
+transaction inputs. The UI shows a risk score, an alert message, and a rolling
+table of recent activity to help with monitoring.
 
 ```bash
 python3 ui.py --host 127.0.0.1 --port 8000
@@ -38,6 +39,7 @@ The input CSV **must** include the following columns:
 ## Output
 The output CSV keeps the original columns and adds:
 - `is_suspicious` (`true`/`false`)
+- `risk_score` (`low`, `medium`, `high`)
 - `reasons` (semicolon-delimited reasons for flagging)
 
 ## Rule Configuration
