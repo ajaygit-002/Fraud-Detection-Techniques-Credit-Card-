@@ -21,6 +21,7 @@ FIELD_ORDER = [
     "card_present",
 ]
 
+MAX_BODY_BYTES = 10_000
 
 class Rules(TypedDict):
     amount_threshold: float
@@ -135,9 +136,14 @@ def render_page(
 
 def validate_form(form: Dict[str, List[str]]) -> Tuple[Dict[str, str], Optional[str]]:
     values = {}
+    duplicates = []
     for field in FIELD_ORDER:
         entries = form.get(field)
+        if entries and len(entries) > 1:
+            duplicates.append(field)
         values[field] = entries[0].strip() if entries else ""
+    if duplicates:
+        return values, f"Duplicate fields provided: {', '.join(duplicates)}"
     missing = [field for field in FIELD_ORDER if not values[field]]
     if missing:
         return values, f"Missing required fields: {', '.join(missing)}"
@@ -170,7 +176,18 @@ def make_handler(rules: Rules, rules_path: str) -> Type[BaseHTTPRequestHandler]:
             if self.path != "/analyze":
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
-            length = int(self.headers.get("Content-Length", "0"))
+            length_header = self.headers.get("Content-Length")
+            if length_header is None:
+                self.send_error(HTTPStatus.LENGTH_REQUIRED)
+                return
+            try:
+                length = int(length_header)
+            except ValueError:
+                self.send_error(HTTPStatus.BAD_REQUEST, "Invalid Content-Length")
+                return
+            if length > MAX_BODY_BYTES:
+                self.send_error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+                return
             body = self.rfile.read(length).decode("utf-8")
             form = parse_qs(body, keep_blank_values=True)
             values, error = validate_form(form)
