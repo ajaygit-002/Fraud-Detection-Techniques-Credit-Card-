@@ -2,7 +2,7 @@
 import argparse
 import html
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
 from socketserver import TCPServer
@@ -26,7 +26,7 @@ def default_form_values() -> Dict[str, str]:
     return {
         "transaction_id": "",
         "card_id": "",
-        "timestamp": datetime.utcnow().replace(microsecond=0).isoformat(),
+        "timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "amount": "",
         "country": "",
         "merchant_category": "",
@@ -124,7 +124,10 @@ def render_page(
 
 
 def validate_form(form: Dict[str, list]) -> tuple[Dict[str, str], Optional[str]]:
-    values = {field: (form.get(field, [""])[0]).strip() for field in FIELD_ORDER}
+    values = {}
+    for field in FIELD_ORDER:
+        values[field] = (form.get(field, [""])[0]).strip()
+    card_present_value = values.get("card_present", "")
     missing = [field for field in FIELD_ORDER if not values[field]]
     if missing:
         return values, f"Missing required fields: {', '.join(missing)}"
@@ -137,7 +140,7 @@ def validate_form(form: Dict[str, list]) -> tuple[Dict[str, str], Optional[str]]
     except ValueError:
         return values, "Amount must be a valid number"
     try:
-        parse_bool(values["card_present"])
+        parse_bool(card_present_value)
     except ValueError as exc:
         return values, f"Invalid card_present value: {exc}"
     return values, None
