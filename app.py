@@ -28,6 +28,14 @@ REQUIRED_FIELDS = {
     "card_present",
 }
 
+RISK_WEIGHTS = {
+    "amount_above_threshold": 2,
+    "high_risk_country": 2,
+    "card_not_present_high_amount": 2,
+    "high_velocity_transactions": 1,
+    "small_amount_burst": 1,
+}
+
 
 def parse_bool(value: str) -> bool:
     normalized = (value or "").strip().lower()
@@ -88,6 +96,15 @@ def trim_old_entries(entries: Deque[datetime], now: datetime, window: timedelta)
         entries.popleft()
 
 
+def calculate_risk_score(reasons: List[str]) -> str:
+    score = sum(RISK_WEIGHTS.get(reason, 0) for reason in reasons)
+    if score == 0:
+        return "low"
+    if score <= 2:
+        return "medium"
+    return "high"
+
+
 def analyze_transactions(
     rows: Iterable[Dict[str, str]], rules: Dict[str, object]
 ) -> List[Dict[str, str]]:
@@ -132,6 +149,7 @@ def analyze_transactions(
                 reasons.append("small_amount_burst")
 
         row["is_suspicious"] = "true" if reasons else "false"
+        row["risk_score"] = calculate_risk_score(reasons)
         row["reasons"] = ";".join(reasons)
         flagged_rows.append(row)
 
