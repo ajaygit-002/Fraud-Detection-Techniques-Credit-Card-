@@ -177,7 +177,7 @@ def make_handler(rules: Rules, rules_path: str) -> Type[BaseHTTPRequestHandler]:
                 self.send_error(HTTPStatus.BAD_REQUEST, "Invalid Content-Length")
                 return
             if length > MAX_BODY_BYTES:
-                self.send_error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+                self.send_error(HTTPStatus.CONTENT_TOO_LARGE)
                 return
             try:
                 body = self.rfile.read(length).decode("utf-8")
@@ -196,7 +196,7 @@ def make_handler(rules: Rules, rules_path: str) -> Type[BaseHTTPRequestHandler]:
                     result = analyzed[0]
                 except (ValueError, KeyError) as exc:
                     self.log_error("Analysis error: %s", exc)
-                    error = f"Unable to analyze transaction ({type(exc).__name__}): {exc}"
+                    error = f"Unable to analyze transaction: {exc}"
             self._send_html(
                 render_page(values, rules_path=rules_path, result=result, error=error)
             )
