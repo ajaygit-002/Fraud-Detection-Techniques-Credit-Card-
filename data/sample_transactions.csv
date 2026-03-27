@@ -1,0 +1,11 @@
+transaction_id,card_id,timestamp,amount,country,merchant_category,card_present
+T-1001,CARD-001,2024-01-01T10:00:00,12.50,US,groceries,true
+T-1002,CARD-001,2024-01-01T10:02:00,4.00,US,coffee,true
+T-1003,CARD-001,2024-01-01T10:03:30,4.50,US,coffee,true
+T-1004,CARD-001,2024-01-01T10:05:00,3.75,US,coffee,true
+T-1005,CARD-002,2024-01-01T11:00:00,6200.00,US,electronics,true
+T-1006,CARD-003,2024-01-01T12:00:00,52.25,NG,online_services,false
+T-1007,CARD-004,2024-01-01T12:05:00,1500.00,US,travel,false
+T-1008,CARD-005,2024-01-01T12:06:00,20.00,CA,retail,true
+T-1009,CARD-006,2024-01-01T12:08:00,4999.00,US,retail,true
+T-1010,CARD-006,2024-01-01T12:09:00,10.00,US,retail,true
