@@ -1,59 +1,103 @@
-# Fraud Detection Techniques - Credit Card
+# Credit Card Fraud Detection Project
 
-## Overview
-This repository includes a minimal, rule-based fraud detection application for credit card transactions. It reads a CSV file, evaluates each transaction against configurable rules, and outputs a new CSV with suspicious flags and reasons.
+This project focuses on detecting fraudulent credit card transactions using machine learning and full-stack technologies.
 
-## Requirements
-- Python 3.8+ (no external dependencies)
+## Architecture
 
-## Quick Start
-```bash
-python3 app.py \
-  --input data/sample_transactions.csv \
-  --output /tmp/flagged_transactions.csv \
-  --rules rules.json
+- Frontend (`client/`): React dashboard for transaction input, risk scoring view, and recent alerts.
+- Backend (`server/`): Node.js + Express API that stores transactions and calls the ML service.
+- Machine Learning (`ml-model/`): Python Flask service with a logistic regression model for fraud probability.
+- Database: MongoDB for storing transaction history and analysis feed.
+- Containerization: Docker + Docker Compose for one-command startup.
+
+## Key Features
+
+- Real-time fraud detection
+- User transaction monitoring
+- Risk scoring (Low / Medium / High)
+- Admin dashboard for fraud analysis
+- Alerts for suspicious activity
+
+## Technologies Used
+
+- Frontend: React.js
+- Backend: Node.js + Express
+- Database: MongoDB
+- Machine Learning: Python (Logistic Regression, Neural Networks, Decision Trees)
+- Containerization: Docker
+
+## Approach
+
+The system analyzes user spending behavior and identifies anomalies using:
+
+- Pattern recognition
+- Outlier detection
+- Behavioral analysis
+
+## Goal
+
+To build an efficient and scalable system that minimizes financial fraud and improves transaction security.
+
+## Project Structure
+
+```text
+Fraud-Detection-/
+	client/         React UI (Vite)
+	server/         Express API + MongoDB integration
+	ml-model/       Flask ML prediction service
+	docker-compose.yml
 ```
 
-## UI (Local Web Form)
-Run the lightweight UI server and open the page in your browser to enter
-transaction inputs. The UI shows a risk score, an alert message, and a rolling
-table of recent activity to help with monitoring.
+## Run With Docker
 
 ```bash
-python3 ui.py --host 127.0.0.1 --port 8000
+docker-compose up --build
 ```
 
-Then open `http://127.0.0.1:8000/` and submit a transaction. Press `Ctrl+C`
-in the terminal to stop the UI server.
+After startup:
 
-## Input Format
-The input CSV **must** include the following columns:
-- `transaction_id`
-- `card_id`
-- `timestamp` (ISO-8601, e.g., `2024-01-01T10:00:00` or `2024-01-01T10:00:00Z`; timestamps are compared as-is, so keep them consistent)
-- `amount`
-- `country` (2-letter code)
-- `merchant_category`
-- `card_present` (`true`/`false`)
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:5000/api/health`
+- ML Service: `http://localhost:8000/health`
 
-## Output
-The output CSV keeps the original columns and adds:
-- `is_suspicious` (`true`/`false`)
-- `risk_score` (`low`, `medium`, `high`)
-- `reasons` (semicolon-delimited reasons for flagging)
+## Local Development (Without Docker)
 
-## Rule Configuration
-Edit `rules.json` to adjust thresholds. Current rules include:
-- `amount_threshold`
-- `high_risk_countries`
-- `velocity_window_minutes`
-- `velocity_threshold` (flags when the number of transactions in the window reaches this value, **including the current transaction**; subsequent transactions within the window continue to be flagged while the count stays at or above the threshold)
-- `small_amount_threshold`
-- `small_amount_count_threshold` (flags when the number of small transactions in the window reaches this value, **including the current transaction**; subsequent small transactions within the window continue to be flagged while the count stays at or above the threshold)
-- `card_not_present_amount_threshold`
+### 1. ML Service
 
-## Project Files
-- `app.py` — CLI application
-- `rules.json` — default rules
-- `data/sample_transactions.csv` — sample data
-- `process.md` — documented step-by-step process
+```bash
+cd ml-model
+pip install -r requirements.txt
+python app.py
+```
+
+### 2. Backend Service
+
+```bash
+cd server
+npm install
+npm start
+```
+
+### 3. Frontend
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Note: Local development expects a running MongoDB instance at `mongodb://localhost:27017/fraud_detection`.
+
+## API Endpoints
+
+- `GET /api/health` : backend and ML health status
+- `POST /api/predict` : score a transaction and save it
+- `GET /api/transactions?limit=10` : fetch recent scored transactions
+
+---
+
+Future Improvements:
+
+- Real-time notification system (SMS/Email)
+- Advanced AI models for better accuracy
+- Integration with banking APIs
